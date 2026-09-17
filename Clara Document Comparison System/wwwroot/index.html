@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clara Document Comparison System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ===== Picking files ===== -->
+<main id="intake" class="intake">
+  <div class="intake-inner">
+    <p class="wordmark">Clara<span>Document Comparison System</span></p>
+    <h1>See what changed between two lesson PDFs</h1>
+    <p class="intake-lead">Drop the older version on the left and the newer one on the right. Text that was removed, added or rewritten is marked in both documents.</p>
+
+    <div class="slots">
+      <label class="slot" data-side="left">
+        <input type="file" accept="application/pdf" id="fileLeft" hidden>
+        <span class="slot-role">Older version</span>
+        <span class="slot-name" id="nameLeft">Choose a PDF or drop one here</span>
+      </label>
+
+      <label class="slot" data-side="right">
+        <input type="file" accept="application/pdf" id="fileRight" hidden>
+        <span class="slot-role">Newer version</span>
+        <span class="slot-name" id="nameRight">Choose a PDF or drop one here</span>
+      </label>
+    </div>
+
+    <button id="runCompare" class="primary" disabled>Compare documents</button>
+    <p class="intake-error" id="intakeError" hidden></p>
+  </div>
+</main>
+
+<!-- ===== Working ===== -->
+<div id="busy" class="busy" hidden>
+  <div class="busy-bar"><span></span></div>
+  <p id="busyText">Reading both documents</p>
+</div>
+
+<!-- ===== Results ===== -->
+<div id="viewer" class="viewer" hidden>
+  <header class="bar">
+    <span class="bar-mark" title="Clara Document Comparison System">Clara</span>
+
+    <div class="bar-files">
+      <span class="file-chip" id="barLeft"></span>
+      <span class="file-arrow" aria-hidden="true">/</span>
+      <span class="file-chip" id="barRight"></span>
+    </div>
+
+    <div class="bar-tools">
+      <div class="zoom" role="group" aria-label="Zoom">
+        <button id="zoomOut" title="Zoom out">&minus;</button>
+        <span id="zoomLabel">100%</span>
+        <button id="zoomIn" title="Zoom in">+</button>
+      </div>
+      <button id="startOver" class="ghost">Compare other files</button>
+    </div>
+
+    <div class="score" id="score">
+      <span class="score-value" id="scoreValue">0.00<span class="score-unit">%</span></span>
+      <span class="score-label">difference <em id="scoreAlgo"></em></span>
+    </div>
+  </header>
+
+  <section class="legend" aria-label="Summary of changes">
+    <button class="key key-removed" data-filter="removed"><i></i><b id="countRemoved">0</b> removed</button>
+    <button class="key key-added" data-filter="added"><i></i><b id="countAdded">0</b> added</button>
+    <button class="key key-changed" data-filter="changed"><i></i><b id="countChanged">0</b> rewritten</button>
+
+    <div class="nav">
+      <button id="prevChange" title="Previous change">&#8593;</button>
+      <span id="navPosition">no changes</span>
+      <button id="nextChange" title="Next change">&#8595;</button>
+    </div>
+
+    <button id="toggleList" class="ghost">Change list</button>
+  </section>
+
+  <div class="panes">
+    <div class="pane" id="paneLeft"><div class="pages" id="pagesLeft"></div></div>
+    <div class="pane" id="paneRight"><div class="pages" id="pagesRight"></div></div>
+
+    <aside class="changelist" id="changeList" hidden>
+      <ol id="changeItems"></ol>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
