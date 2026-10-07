@@ -8,9 +8,9 @@ It is designed for situations where knowing that *something changed* is not enou
 
 Unlike a simple text diff, Clara preserves the spatial context of the original document. Changes are mapped back to their positions on the PDF page and displayed as visual overlays in the browser.
 
-![Clara document comparison](docs/clara01.PNG)
+![Clara document comparison](Clara%20Document%20Comparison%20System/docs/clara01.PNG)
 
-![Clara document comparison](docs/clara02.PNG)
+![Clara document comparison](Clara%20Document%20Comparison%20System/docs/clara02.PNG)
 
 ---
 
