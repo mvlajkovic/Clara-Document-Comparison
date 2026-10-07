@@ -1,42 +1,405 @@
-# Clara Document Comparison System
+# Clara — Document Comparison System
 
-**See exactly what changed between two PDFs — word by word, side by side, in seconds.**
+**See exactly what changed between two versions of a PDF — not just that they are different.**
 
-Clara Document Comparison System is a lightweight, self-hosted document comparison tool built for anyone who needs to answer one question quickly: *what actually changed between these two versions?* Upload two PDFs and Clara renders them side by side with every addition, deletion, and rewrite highlighted in place — no manual proofreading, no guessing, no scrolling back and forth between two separate files.
+Clara is a self-hosted document comparison system that compares two PDF documents and visually highlights additions, deletions, and rewritten content directly on the original pages.
 
-## Why Clara
+It is designed for situations where knowing that *something changed* is not enough. When documents such as reports, educational materials, policies, or other revision-heavy content are updated, Clara makes it possible to quickly see **what changed, where it changed, and how much the documents differ**.
 
-Comparing documents by eye is slow and unreliable — small wording changes get missed, and large ones are hard to summarize. Clara solves this with the same algorithm class that powers Git's diffing (Myers' minimal edit-distance algorithm), applied to document text instead of source code. The result is a diff that stays tight and readable: a single moved word is highlighted as a single moved word, not an entire repainted paragraph.
+Unlike a simple text diff, Clara preserves the spatial context of the original document. Changes are mapped back to their positions on the PDF page and displayed as visual overlays in the browser.
 
-Alongside the visual diff, Clara calculates a **quantitative similarity score** — a word-frequency-based difference percentage — giving you both a fast at-a-glance number and a detailed, navigable breakdown of every change.
+![Clara document comparison](docs/clara01.png)
 
-## Features
+![Clara document comparison](docs/clara02.png)
 
-- **Side-by-side visual diff** — both PDFs rendered in the browser with synchronized scrolling and zoom
-- **Color-coded highlighting** — additions, removals, and rewrites are each marked distinctly, directly on the page
-- **Minimal-edit diffing** — powered by a linear-space implementation of Myers' algorithm, so highlights stay precise instead of over-flagging whole paragraphs
-- **Change navigation** — jump between changes with keyboard shortcuts or a filterable change list
-- **Quantitative difference score** — a word-frequency similarity percentage calculated independently of the visual diff
-- **Self-hosted** — runs entirely on your own infrastructure; documents never leave your server
-- **No database, no setup overhead** — drop in two PDFs and get results immediately
+---
 
-## How it works
+## Why Clara?
 
-1. Both PDFs are parsed server-side to extract every word along with its exact position on the page
-2. The two word sequences are compared using a minimal edit-script algorithm, producing the smallest possible set of changes
-3. Changes are grouped into highlight regions and sent to the browser as lightweight coordinates
-4. The browser renders both PDFs natively and overlays the highlights — so page images never have to be transmitted, and highlights stay sharp at any zoom level
+Comparing two PDF files manually can be surprisingly difficult.
 
-## Tech stack
+A traditional text comparison can tell you that a sentence changed, but it may lose important information about where that change appeared in the original document. Comparing the PDFs visually, on the other hand, can require manually switching between versions and searching for differences.
 
-- **Backend:** ASP.NET Core (.NET 9)
-- **PDF parsing:** PdfPig (word-level extraction with positional data), iText (text extraction for the similarity score)
-- **Frontend:** PDF.js for in-browser rendering, vanilla JavaScript for the diff viewer
-- **No external services, no cloud dependencies** — everything runs locally
+Clara combines both approaches:
 
-## Use cases
+**PDF → structured text + positions → algorithmic comparison → visual changes**
 
-- Comparing revised lesson materials, reports, or course documents between versions or academic years
-- Reviewing contract or policy redlines without relying on the original author to track changes
-- Catching unintended or unauthorized edits between document revisions
-- Any workflow where "what changed?" needs a fast, visual, trustworthy answer
+This makes it possible to go from:
+
+> "These two documents are different."
+
+to:
+
+> "These words were added on page 4, this sentence was rewritten on page 7, and these sections were removed."
+
+The result is intended to make document revision and review faster and easier.
+
+---
+
+## Key Features
+
+* Upload and compare two PDF documents
+* View the documents directly in the browser
+* Detect additions, deletions, and rewritten text
+* Compare documents at the word level
+* Preserve page and coordinate information during PDF extraction
+* Highlight changes at their original positions on the page
+* Calculate a quantitative word-frequency similarity score
+* Use the Myers minimal edit-distance algorithm for document comparison
+* Linear-space implementation of the comparison algorithm
+* Self-hosted — no external services or cloud APIs required
+* No database required
+* Process documents locally
+
+---
+
+## How It Works
+
+Clara's comparison process consists of several stages.
+
+```text
+             ┌──────────────────────┐
+             │    Two PDF files     │
+             └──────────┬───────────┘
+                        │
+                        ▼
+             ┌──────────────────────┐
+             │   PDF text extraction│
+             │        PdfPig        │
+             └──────────┬───────────┘
+                        │
+                        ▼
+             ┌──────────────────────┐
+             │ Words + page +       │
+             │ positional data      │
+             └──────────┬───────────┘
+                        │
+                        ▼
+             ┌──────────────────────┐
+             │   Myers diff         │
+             │   algorithm          │
+             └──────────┬───────────┘
+                        │
+                        ▼
+             ┌──────────────────────┐
+             │ Changed words mapped │
+             │ to PDF coordinates   │
+             └──────────┬───────────┘
+                        │
+                        ▼
+             ┌──────────────────────┐
+             │ Browser visualization│
+             │       PDF.js         │
+             └──────────────────────┘
+```
+
+### 1. PDF extraction
+
+Each PDF is processed to extract its textual content at the word level.
+
+For each extracted word, Clara retains positional information such as its page and location within the page.
+
+This information is important because the final goal is not only to determine **which words changed**, but also **where those words appeared in the original document**.
+
+### 2. Document comparison
+
+The extracted word sequences are compared using the **Myers diff algorithm**.
+
+The algorithm identifies the minimal sequence of insertions and deletions needed to transform one sequence into another.
+
+Clara uses a linear-space implementation to reduce the memory required by the comparison process.
+
+### 3. Mapping differences back to the document
+
+The textual differences are associated with the positional information collected during PDF extraction.
+
+This allows Clara to determine where a changed word belongs on the original page.
+
+### 4. Browser visualization
+
+The frontend renders the PDF using **PDF.js**.
+
+The detected differences are then displayed as coordinate-based overlays on top of the document, allowing the user to see changes in their original visual context.
+
+---
+
+## The Comparison Algorithm
+
+Clara uses the **Myers diff algorithm** to compare documents at the word level.
+
+For example, given:
+
+```text
+Version A:
+The system processes student submissions.
+
+Version B:
+The system automatically processes student submissions.
+```
+
+the comparison can identify the added word:
+
+```text
+The system [automatically] processes student submissions.
+```
+
+The important part is that Clara does not stop at identifying the changed text.
+
+Because each word retains its original PDF coordinates, the detected change can subsequently be mapped back to the corresponding location on the document page.
+
+### Why Myers?
+
+Myers' algorithm is designed to find a minimal edit sequence between two sequences. This makes it suitable for identifying meaningful textual changes while avoiding unnecessary differences caused by simple sequence alignment.
+
+Clara uses a **linear-space implementation** to avoid retaining the complete edit graph in memory.
+
+---
+
+## From Text Differences to Visual Changes
+
+One of the main engineering challenges in Clara is connecting a textual diff with the original visual document.
+
+A text-only comparison might produce:
+
+```text
+Old:
+The system processes student submissions.
+
+New:
+The system automatically processes student submissions.
+```
+
+But the application ultimately needs to answer:
+
+> Where is "automatically" located on the PDF page?
+
+To support this, Clara preserves positional information during PDF extraction.
+
+The process is therefore:
+
+```text
+PDF
+ ↓
+Words + coordinates
+ ↓
+Word sequence
+ ↓
+Myers diff
+ ↓
+Changed words
+ ↓
+Original coordinates
+ ↓
+Visual overlay
+```
+
+This allows the application to display changes directly where they occur in the document.
+
+---
+
+## Similarity Score
+
+In addition to the visual diff, Clara calculates a quantitative similarity score based on word-frequency comparison.
+
+The score provides a high-level indication of how similar two documents are.
+
+The two mechanisms serve different purposes:
+
+* **Similarity score:** provides a quick overall indication of how similar the documents are.
+* **Visual diff:** shows exactly where their content differs.
+
+This makes it possible to quickly identify whether two documents are broadly similar and then inspect the specific changes when necessary.
+
+---
+
+## Architecture
+
+Clara uses a lightweight client-server architecture.
+
+```text
+┌─────────────────────────────────────────────┐
+│                  Browser                    │
+│                                             │
+│  JavaScript + PDF.js                       │
+│  PDF rendering                             │
+│  Diff visualization                        │
+│  Coordinate overlays                       │
+└──────────────────────┬──────────────────────┘
+                       │ HTTP
+                       ▼
+┌─────────────────────────────────────────────┐
+│             ASP.NET Core Backend            │
+│                    .NET 9                   │
+│                                             │
+│  Document upload                            │
+│  PDF processing                             │
+│  Document comparison                        │
+│  Similarity calculation                     │
+└───────────────┬─────────────────┬───────────┘
+                │                 │
+                ▼                 ▼
+       ┌────────────────┐  ┌────────────────┐
+       │     PdfPig     │  │     iText      │
+       │                │  │                │
+       │ Word extraction│  │ Similarity /   │
+       │ + coordinates  │  │ text analysis  │
+       └────────────────┘  └────────────────┘
+```
+
+The application does not require a database or external cloud services.
+
+Document processing is performed by the application itself, making Clara suitable for self-hosted environments where documents should remain within the organization's infrastructure.
+
+---
+
+## Technology
+
+### Backend
+
+* **C#**
+* **ASP.NET Core**
+* **.NET 9**
+
+### PDF Processing
+
+* **PdfPig** — word-level PDF extraction and positional information
+* **iText** — text/document analysis used for the similarity calculation
+
+### Document Comparison
+
+* **Myers minimal edit-distance algorithm**
+* Linear-space implementation
+* Word-level comparison
+
+### Frontend
+
+* **JavaScript**
+* **PDF.js**
+* Coordinate-based visual overlays
+
+### Deployment
+
+* Self-hosted
+* No external cloud services
+* No external APIs required
+* No database required
+
+---
+
+## Engineering Decisions
+
+### Word-level comparison instead of raw PDF comparison
+
+PDF files contain much more than visible text, including formatting information, metadata, and internal document structures.
+
+Two PDFs can therefore differ at the file level without having a meaningful difference in their visible content.
+
+Clara compares extracted document content instead of comparing raw PDF files byte-by-byte.
+
+### Preserving positional information
+
+A text-only diff is not enough for a document comparison tool.
+
+Words are therefore retained together with their page and coordinate information so that detected changes can later be rendered at their original location.
+
+### Self-hosted processing
+
+Clara does not depend on external services or cloud APIs for document processing.
+
+This keeps the architecture lightweight and allows the application to be deployed within an organization's own environment.
+
+### Linear-space diff
+
+The Myers algorithm can be implemented in ways that retain substantial intermediate state.
+
+Clara uses a linear-space implementation to reduce memory requirements during document comparison.
+
+---
+
+## Example Use Cases
+
+Clara can be useful wherever documents go through repeated revisions and the differences need to be reviewed efficiently.
+
+### Educational materials
+
+Compare different versions of:
+
+* course materials
+* lesson documents
+* assignments
+* reports
+* instructional PDFs
+
+For example, an instructor can compare the current version of a lesson with its previous version and immediately see which explanations or sections were changed.
+
+### Policies and procedures
+
+Organizations can compare revised versions of internal policies or procedures and quickly identify changes.
+
+### Reports and documentation
+
+Compare revised reports or technical documents while preserving the visual context of the original pages.
+
+### Revision and quality assurance
+
+Clara can be used as a review tool when documents are edited by multiple people and changes need to be inspected before publication.
+
+---
+
+## Running Locally
+
+### Requirements
+
+* .NET 9 SDK
+* A modern web browser
+
+### Clone the repository
+
+```bash
+git clone <repository-url>
+cd Clara
+```
+
+### Run the application
+
+```bash
+dotnet run
+```
+
+Then open the URL displayed by the ASP.NET Core application in your browser.
+
+---
+
+## Limitations
+
+PDF documents are complex and can contain layouts and structures that make reliable text extraction difficult.
+
+As a result, comparison quality can depend on the structure and characteristics of the input PDFs.
+
+Clara is primarily designed around text-based PDF documents where the textual content can be extracted reliably.
+
+Scanned documents containing only images may require OCR before meaningful word-level comparison is possible.
+
+---
+
+## Future Improvements
+
+Possible future improvements include:
+
+* improved handling of complex PDF layouts
+* OCR support for scanned documents
+* additional diff visualization options
+* more detailed comparison statistics
+* improved handling of tables and multi-column layouts
+* automated tests for additional PDF structures and edge cases
+* packaging and deployment improvements
+
+---
+
+## Project Goal
+
+The goal of Clara is simple:
+
+> **Make document changes easy to see.**
+
+Instead of asking users to manually compare two versions of a document, Clara combines document parsing, sequence comparison, positional information, and browser-based visualization to show where the content changed.
