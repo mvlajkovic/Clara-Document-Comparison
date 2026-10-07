@@ -1,144 +1,42 @@
-# Clara Document Comparison System (.NET 9)
+# Clara Document Comparison System
 
-Same app, rebuilt on a current, actively-supported version of .NET. This is a
-full rewrite of the project structure — **the actual comparison logic,
-diffing, and viewer are untouched.** What changed is how the project is put
-together, and that change is what fixes the whole class of errors you hit
-building the old version.
+**See exactly what changed between two PDFs — word by word, side by side, in seconds.**
 
-## Why this fixes the dependency chase
+Clara Document Comparison System is a lightweight, self-hosted document comparison tool built for anyone who needs to answer one question quickly: *what actually changed between these two versions?* Upload two PDFs and Clara renders them side by side with every addition, deletion, and rewrite highlighted in place — no manual proofreading, no guessing, no scrolling back and forth between two separate files.
 
-The old project used a format from the .NET Framework era (`packages.config`
-+ hand-written `<Reference HintPath="...">` entries). In that format, when a
-library needs another library underneath it, Visual Studio does **not** add
-that automatically — you have to find it and wire it in by hand. That's why
-we spent several rounds patching in `System.Runtime.CompilerServices.Unsafe`,
-`Common.Logging`, and `BouncyCastle.Crypto` one at a time as each one failed.
+## Why Clara
 
-This project uses a **modern SDK-style `.csproj`** with `PackageReference`
-instead. In that format, when you reference a package, NuGet reads that
-package's own list of things *it* needs and pulls all of them in automatically,
-as many layers deep as necessary. You'll see the whole `.csproj` for this
-version is about 15 lines — that's not a simplification, that's genuinely all
-it needs to say.
+Comparing documents by eye is slow and unreliable — small wording changes get missed, and large ones are hard to summarize. Clara solves this with the same algorithm class that powers Git's diffing (Myers' minimal edit-distance algorithm), applied to document text instead of source code. The result is a diff that stays tight and readable: a single moved word is highlighted as a single moved word, not an entire repainted paragraph.
 
-## What to install
+Alongside the visual diff, Clara calculates a **quantitative similarity score** — a word-frequency-based difference percentage — giving you both a fast at-a-glance number and a detailed, navigable breakdown of every change.
 
-1. **.NET 9 SDK** — download from **dotnet.microsoft.com/download/dotnet/9.0**
-   (get the **SDK**, not just the Runtime — the SDK includes the Runtime and
-   also the tools that let you build the project)
-2. **Visual Studio 2022, fully updated** — open Visual Studio, go to
-   **Help → Check for Updates**, and install anything it offers. .NET 9 needs
-   a recent-enough Visual Studio to recognize it; older installs won't see it
-   as an option.
+## Features
 
-## Opening it
+- **Side-by-side visual diff** — both PDFs rendered in the browser with synchronized scrolling and zoom
+- **Color-coded highlighting** — additions, removals, and rewrites are each marked distinctly, directly on the page
+- **Minimal-edit diffing** — powered by a linear-space implementation of Myers' algorithm, so highlights stay precise instead of over-flagging whole paragraphs
+- **Change navigation** — jump between changes with keyboard shortcuts or a filterable change list
+- **Quantitative difference score** — a word-frequency similarity percentage calculated independently of the visual diff
+- **Self-hosted** — runs entirely on your own infrastructure; documents never leave your server
+- **No database, no setup overhead** — drop in two PDFs and get results immediately
 
-1. Extract the zip
-2. Double-click **`Clara Document Comparison System.sln`**
-3. Visual Studio restores the two NuGet packages automatically on open — no
-   manual "Restore NuGet Packages" step needed, and no Package Manager Console
-   commands
-4. Press **▶ play**
+## How it works
 
-Visual Studio now runs the app directly (Kestrel, the built-in ASP.NET Core
-server) instead of through IIS Express — you'll notice the play button says
-something like "Clara Document Comparison System" or "https" instead of "IIS
-Express." That's expected.
+1. Both PDFs are parsed server-side to extract every word along with its exact position on the page
+2. The two word sequences are compared using a minimal edit-script algorithm, producing the smallest possible set of changes
+3. Changes are grouped into highlight regions and sent to the browser as lightweight coordinates
+4. The browser renders both PDFs natively and overlays the highlights — so page images never have to be transmitted, and highlights stay sharp at any zoom level
 
-### If Visual Studio doesn't offer `net9.0` as a target
+## Tech stack
 
-That means it needs updating (see step 2 above), or as a fallback you can run
-the app without Visual Studio's build system at all:
+- **Backend:** ASP.NET Core (.NET 9)
+- **PDF parsing:** PdfPig (word-level extraction with positional data), iText (text extraction for the similarity score)
+- **Frontend:** PDF.js for in-browser rendering, vanilla JavaScript for the diff viewer
+- **No external services, no cloud dependencies** — everything runs locally
 
-1. Open a terminal (**View → Terminal** in Visual Studio, or plain Windows
-   Terminal / PowerShell)
-2. `cd` into the folder containing `Clara Document Comparison System.csproj`
-3. Run:
-   ```
-   dotnet run
-   ```
-4. Open the URL it prints (something like `http://localhost:5080`) in your
-   browser
+## Use cases
 
-This path only needs the .NET 9 SDK installed — it doesn't depend on Visual
-Studio's tooling being current, so it's a good way to confirm whether a
-problem is "Visual Studio is out of date" versus something else.
-
-## What actually changed, file by file
-
-| Old (.NET Framework 4.7.2) | New (.NET 9) | Why |
-|---|---|---|
-| `packages.config` + manual `<Reference HintPath>` | `<PackageReference>` in the `.csproj` | Dependencies resolve automatically |
-| `Web.config` binding redirects | *(deleted — not needed)* | Modern .NET doesn't require them |
-| `Global.asax` / `Global.asax.cs` | `Program.cs` | Modern ASP.NET Core starts the app directly, no separate startup class |
-| `App_Start\WebApiConfig.cs` | folded into `Program.cs` | Routing setup is a few lines now, not a separate file |
-| `System.Web.Http.ApiController` | `Microsoft.AspNetCore.Mvc.ControllerBase` | The current web framework |
-| `MultipartFormDataStreamProvider` | `Request.Form.Files` | ASP.NET Core parses uploaded files natively |
-| `System.Web.Hosting.HostingEnvironment.MapPath` | `IWebHostEnvironment.ContentRootPath` | Modern way to find the app's folder on disk |
-| `WebClient` (deprecated) | `HttpClient` | Current, supported way to download files |
-| Client files at project root | Client files under `wwwroot\` | ASP.NET Core's convention for anything served to the browser |
-| `itext7` (itext7.kernel) 7.1.13, needing `Common.Logging` + `BouncyCastle.Crypto` by hand | `itext` 9.7.0 | Current package (iText renamed `itext7` → `itext` at v9); logging and crypto dependencies resolve automatically via NuGet |
-
-**Not changed at all:** `Algorithms\LevenshteinDistance.cs`,
-`Algorithms\Reader.cs`, `Services\SimilarityAlgorithm.cs`,
-`Services\PdfTextExtractor.cs`, `Services\MyersDiff.cs`,
-`Services\DiffBuilder.cs`, `Models\CompareModels.cs`, and everything in
-`wwwroot\` (the viewer itself). The difference score, the diffing, and the
-side-by-side page are byte-for-byte what you already had working.
-
-## Packages used
-
-| Package | Version | What it's for |
-|---|---|---|
-| `itext` | 9.7.0 | Reads PDF text for `Reader.cs` (the difference score) — this is iText's current package name, renamed from `itext7` |
-| `PdfPig` | 0.1.9 | Reads PDF text *with* word positions, for the visual diff |
-
-Both are current, actively-published packages as of September 2026. Neither
-needs anything added by hand — installing them is enough.
-
-`itext` pulls in more than `Reader.cs` strictly uses (it includes layout,
-forms, and signing modules alongside the PDF-reading code this app actually
-calls) — that's a size trade-off for using a package name that's guaranteed to
-exist and resolve correctly, rather than guessing at a narrower submodule name.
-
-## Where things live now
-
-```
-Clara Document Comparison System.sln
-└── Clara Document Comparison System\
-    ├── Program.cs                    starts the app, sets upload size limit
-    ├── appsettings.json               settings (replaces Web.config)
-    ├── Controllers\CompareController.cs
-    ├── Services\
-    │   ├── PdfTextExtractor.cs        words + bounding boxes, via PdfPig
-    │   ├── MyersDiff.cs               minimal edit script
-    │   ├── DiffBuilder.cs             edits → change blocks → rectangles
-    │   └── SimilarityAlgorithm.cs     wraps Reader + LevenshteinDistance
-    ├── Algorithms\
-    │   ├── LevenshteinDistance.cs     your file, unchanged
-    │   └── Reader.cs                  your file, unchanged
-    ├── Models\CompareModels.cs
-    └── wwwroot\                       the viewer (served directly by the app)
-        ├── index.html
-        ├── css\app.css
-        └── js\app.js
-```
-
-## Endpoints (unchanged)
-
-| Method | Route | Notes |
-|---|---|---|
-| POST | `/api/compare/upload` | `multipart/form-data`, two PDFs |
-| GET | `/api/compare/urls?lessonCode=SE201&lessonNumber=05&yearOld=2023-2024&yearNew=0` | Your mdita URL convention |
-
-The lesson base URL lives in `appsettings.json` under `"LessonBaseUrl"`.
-
-## Deploying this somewhere other than your own machine
-
-This is no longer an IIS-hosted app in the old sense — ASP.NET Core apps run
-via Kestrel and are typically put behind IIS, Nginx, or a reverse proxy only
-as a **front door**, not as the actual runtime. If you eventually need to put
-this on a server, that's a different (and honestly easier) conversation from
-what we've been doing — say the word when you're ready and I'll walk through
-it, including whether IIS is even the right choice on that server.
+- Comparing revised lesson materials, reports, or course documents between versions or academic years
+- Reviewing contract or policy redlines without relying on the original author to track changes
+- Catching unintended or unauthorized edits between document revisions
+- Any workflow where "what changed?" needs a fast, visual, trustworthy answer
